@@ -319,4 +319,27 @@ describe("WebSocket Chat Streaming (/ws)", () => {
     wsA.close();
     wsB.close();
   });
+
+  it("10. should immediately stream greeting via WebSocket router gate without invoking LLM", async () => {
+    const ws = new WebSocket(`${wsUrl}?token=${tokenA}`);
+    const collector = createEventCollector(ws);
+    await collector.waitFor("connection.connected");
+
+    const requestId = crypto.randomUUID();
+    ws.send(JSON.stringify({ type: "chat.send", payload: { query: "Hello there!", requestId } }));
+
+    const startEvent = await collector.waitFor("chat.start");
+    assert.equal(startEvent.payload.requestId, requestId);
+
+    const tokenEvent = await collector.waitFor("chat.token");
+    assert.equal(tokenEvent.payload.requestId, requestId);
+    assert.ok(String(tokenEvent.payload.token).includes("Hello!"));
+
+    const completeEvent = await collector.waitFor("chat.complete");
+    assert.equal(completeEvent.payload.requestId, requestId);
+    assert.equal(completeEvent.payload.modelName, "conversational");
+    assert.equal(completeEvent.payload.evidenceSufficient, true);
+
+    ws.close();
+  });
 });

@@ -34,15 +34,7 @@ let currentSocketToken: string | null | undefined = undefined;
 
 export function getWsUrl(token?: string | null): string {
   const configured = process.env.NEXT_PUBLIC_WS_URL;
-  let base: string;
-  if (configured) {
-    base = configured;
-  } else if (typeof window !== "undefined") {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    base = `${protocol}//${window.location.host}/ws`;
-  } else {
-    base = "ws://localhost:3000/ws";
-  }
+  const base = configured || "ws://localhost:3000/ws";
   return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
 

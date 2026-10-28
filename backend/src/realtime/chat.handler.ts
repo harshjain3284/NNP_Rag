@@ -4,6 +4,9 @@ import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/env.js";
 import type { JwtTokenPayload } from "../types/auth.types.js";
 import { generateAnswerStream } from "../rag/generation/generator.js";
+import { routeChatQuery } from "../rag/okf/index.js";
+import type { Citation } from "../rag/generation/types.js";
+import type { RetrievalDebugInfo } from "../rag/retrieval/types.js";
 import {
   prepareConversation,
   persistChatExchange,
@@ -202,16 +205,45 @@ export const handleClientConnection = (
       session.activeRequests.set(requestId, abortController);
 
       try {
-        const result = await generateAnswerStream(query, {
-          documentId: docId,
-          systemPrompt: chatPayload.systemPrompt?.trim(),
-          conversationHistory: historyContext,
-          signal: abortController.signal,
-          onToken: (token: string) => {
-            if (abortController.signal.aborted || ws.readyState !== WebSocket.OPEN) return;
-            sendToClient(ws, "chat.token", { requestId, token });
-          },
-        });
+        const routingOutcome = await routeChatQuery(query, { documentId: docId });
+
+        let result: {
+          answer: string;
+          citations: Citation[];
+          evidenceSufficient: boolean;
+          refusalReason?: string | null;
+          modelName: string;
+          providerName: string;
+          retrievalDebug?: RetrievalDebugInfo | undefined;
+        };
+
+        if (routingOutcome.handledDirectly && routingOutcome.result) {
+          sendToClient(ws, "chat.token", { requestId, token: routingOutcome.result.answer });
+          result = {
+            ...routingOutcome.result,
+            refusalReason: routingOutcome.result.refusalReason ?? null,
+            retrievalDebug: {
+              retrievedChunks: [],
+              contextChunks: [],
+              filterReason: `Bypassed retrieval via query router (${routingOutcome.decision.intent})`,
+            },
+          };
+        } else {
+          const streamResult = await generateAnswerStream(query, {
+            documentId: docId,
+            systemPrompt: chatPayload.systemPrompt?.trim(),
+            conversationHistory: historyContext,
+            signal: abortController.signal,
+            onToken: (token: string) => {
+              if (abortController.signal.aborted || ws.readyState !== WebSocket.OPEN) return;
+              sendToClient(ws, "chat.token", { requestId, token });
+            },
+          });
+          result = {
+            ...streamResult,
+            refusalReason: streamResult.refusalReason ?? null,
+          };
+        }
 
         if (abortController.signal.aborted) return;
 

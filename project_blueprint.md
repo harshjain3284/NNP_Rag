@@ -85,7 +85,8 @@ NNT_Rag/
 │   │   ├── lib/                  # API client, auth utilities, formatting helpers
 │   │   ├── hooks/                # Custom React hooks (useWebSocket, useChat, useAuth)
 │   │   └── types/                # Frontend TypeScript contracts
-│   └── package.json
+├── knowledge/                    # OKF v0.2 Knowledge Bundles
+│   └── bundle/                   # Hierarchical topic maps, root index.md, and update log.md
 │
 ├── backend/                      # Node.js, Express, TypeScript, Drizzle ORM, pgvector
 │   ├── uploads/                  # Phase 1 local filesystem storage for uploaded files
@@ -105,7 +106,8 @@ NNT_Rag/
 │   │   ├── rag/                  # Modular RAG pipeline layers
 │   │   │   ├── ingestion/        # Parser, cleaner, chunker, queue, pipeline, persistence
 │   │   │   ├── retrieval/        # PGVectorRetriever (cosine similarity search)
-│   │   │   └── generation/       # Prompt builder, sufficiency gates, citation extractor
+│   │   │   ├── generation/       # Prompt builder, sufficiency gates, citation extractor
+│   │   │   └── okf/              # OKF v0.2 parser, validator, loader, and query router
 │   │   ├── realtime/             # WebSocket server and typed ingestion lifecycle events
 │   │   ├── types/                # Shared backend interfaces
 │   │   └── utils/                # Helper utilities (hash computation, file management)
@@ -122,7 +124,7 @@ NNT_Rag/
 * **`middleware/`:** Houses upload handling (`upload.middleware.ts` [implemented]), authentication guard (`auth.middleware.ts` [implemented]), role checking (`role.middleware.ts` [implemented]), and planned centralized error handling (`error.middleware.ts`).
 * **`validators/` [Planned]:** Zod schemas validating HTTP request bodies, query strings, and path parameters before execution.
 * **`providers/` [Implemented]:** Vendor-agnostic abstractions isolating LLM generation and embedding models behind clean contracts.
-* **`rag/` [Implemented]:** Houses the ingestion, retrieval, and generation engines implementing core RAG capabilities.
+* **`rag/` [Implemented]:** Houses the ingestion, retrieval, and generation engines implementing core RAG capabilities. Includes `rag/okf/` (implemented in Milestone 1) owning OKF v0.2 concept parsing, YAML frontmatter extraction, conformance validation, trust-tier derivation, bundle loading, and pre-retrieval query routing contracts.
 * **`realtime/` [Implemented]:** Manages the WebSocket server and broadcasts typed ingestion telemetry events.
 * **`utils/` [Implemented]:** Houses shared helper utilities including file hashing and file deletion management (`file.ts`).
 
@@ -685,6 +687,8 @@ The security architecture implements the following authentication, authorization
 * **2026-10-15 — Dynamic Project Runtime Configuration:** Introduced `runtime-settings.json` backed by `config.service.ts` allowing Super Admins to adjust active LLM provider, models, temperature, retrieval topK, similarity thresholds, and concurrency at runtime without restarting the server.
 * **2026-10-15 — Reusable AppLayout Shell:** Created lightweight layout wrapper (`AppLayout`) for Next.js secondary views (`/profile`, `/settings`), drastically reducing duplicate sidebar/topbar boilerplate while preserving responsive state and authentication gates.
 * **2026-10-15 — Server-Side User Profile & Password Security:** Added `/api/auth/me`, `/api/auth/profile`, and `/api/auth/password` with server-side bcrypt password verification and rehashing, enforcing strict separation between non-privileged user fields and role assignment.
+* **2026-10-28 — Open Knowledge Format (OKF v0.2) Foundation & Query Router Contract (Milestone 1):** Introduced hierarchical knowledge bundle under `knowledge/bundle/` conforming to official Google OKF v0.2 specifications (SPEC.md). Built zero-dependency TypeScript parser, conformance validator, bundle loader, and pre-retrieval query routing interface (`RuleBasedQueryRouter`) categorizing user queries across 5 intents (`greeting`, `okf_topic`, `document_rag`, `out_of_scope`, `ambiguous_mixed`). Preserves strict grounding policy and existing pgvector RAG pipeline intact.
+* **2026-10-28 — OKF Live Query Flow Integration & Pre-Retrieval Gate (Milestone 2):** Integrated `RuleBasedQueryRouter` and OKF loader into live chat request flow (`POST /api/chat`) as a pre-retrieval routing gate via `routeChatQuery`. Conversational greetings (`greeting`), system architecture/capability inquiries (`okf_topic`), and out-of-domain questions (`out_of_scope`) are resolved deterministically before retrieval, bypassing pgvector search and LLM synthesis while returning grounded responses with concept file citations (`architecture/pipeline.md`, `capabilities/supported_formats.md`). Explicit document queries (`document_rag`) and ambiguous mixed queries seamlessly flow into the existing authorized pgvector RAG pipeline, preserving evidence sufficiency checks, dual-layer sentinels, authorization guards, and 50-message conversational persistence.
 
 ## 14.2 Remaining & Future Scope (Phase 2+)
 While Phase 1 core functionality is 100% complete, the following improvements and advanced capabilities are identified for Phase 2:

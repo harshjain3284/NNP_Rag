@@ -1,7 +1,7 @@
 {
   "models": {
-    "llmProvider": "groq",
-    "llmModel": "qwen/qwen3.8-27b",
+    "llmProvider": "ollama",
+    "llmModel": "hf.co/unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M",
     "embeddingProvider": "local",
     "embeddingModel": "Xenova/jina-embeddings-v2-small-en",
     "supportedLLMProviders": [

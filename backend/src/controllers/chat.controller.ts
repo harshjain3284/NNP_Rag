@@ -1,5 +1,8 @@
 import type { Request, Response } from "express";
 import { generateAnswer } from "../rag/generation/generator.js";
+import { routeChatQuery } from "../rag/okf/index.js";
+import type { Citation } from "../rag/generation/types.js";
+import type { RetrievalDebugInfo } from "../rag/retrieval/types.js";
 import {
   prepareConversation,
   persistChatExchange,
@@ -109,18 +112,43 @@ export const chatController = async (
       historyContext = prep.data.historyContext;
     }
 
-    // 5. Execute generation pipeline with retrieved evidence, system prompt, and prior history
-    const generateOpts: {
-      documentId?: string;
-      conversationHistory?: Array<{ role: string; content: string }>;
-      systemPrompt?: string;
-    } = {
-      conversationHistory: historyContext,
+    // 5. Pre-retrieval routing gate and answer resolution
+    let result: {
+      answer: string;
+      evidenceSufficient: boolean;
+      refusalReason?: string | undefined;
+      citations: Citation[];
+      modelName: string;
+      providerName: string;
+      retrievalDebug?: RetrievalDebugInfo | undefined;
     };
-    if (targetDocumentId !== undefined) generateOpts.documentId = targetDocumentId;
-    if (targetSystemPrompt !== undefined) generateOpts.systemPrompt = targetSystemPrompt;
 
-    const result = await generateAnswer(trimmedQuery, generateOpts);
+    const routingOutcome = await routeChatQuery(trimmedQuery, {
+      documentId: targetDocumentId,
+    });
+
+    if (routingOutcome.handledDirectly && routingOutcome.result) {
+      result = {
+        ...routingOutcome.result,
+        retrievalDebug: {
+          retrievedChunks: [],
+          contextChunks: [],
+          filterReason: `Bypassed retrieval via query router (${routingOutcome.decision.intent})`,
+        },
+      };
+    } else {
+      const generateOpts: {
+        documentId?: string;
+        conversationHistory?: Array<{ role: string; content: string }>;
+        systemPrompt?: string;
+      } = {
+        conversationHistory: historyContext,
+      };
+      if (targetDocumentId !== undefined) generateOpts.documentId = targetDocumentId;
+      if (targetSystemPrompt !== undefined) generateOpts.systemPrompt = targetSystemPrompt;
+
+      result = await generateAnswer(trimmedQuery, generateOpts);
+    }
 
     // 6. Persist exchange atomically and compute remaining messages & warnings
     let finalConversationId = activeConversationId;

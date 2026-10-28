@@ -9,7 +9,8 @@ CRITICAL RULES:
 INSUFFICIENT_EVIDENCE: <brief explanation of what information is missing>
 3. If the evidence IS sufficient, answer the user's question clearly, concisely, and accurately based only on the sources.
 4. Always cite your sources in the text using bracketed source tags like [Source 1], [Source 2] immediately following the facts they support.
-5. Do NOT invent or make up citations. Only cite sources provided in the Evidence Sources list.`;
+5. Do NOT invent or make up citations. Only cite sources provided in the Evidence Sources list.
+6. Do NOT append a "Citations:", "Sources:", or bibliography summary list at the end of your response. Only use inline tags like [Source 1] inside your sentences. Citations are handled separately by the user interface.`;
 
 export const formatEvidenceContext = (chunks: RetrievedChunk[]): string => {
   if (chunks.length === 0) {
@@ -49,7 +50,7 @@ ${context}
 USER QUESTION:
 ${query}
 
-Provide a direct, grounded answer with citations ([Source X]). If the sources do not provide sufficient information to answer the question, output "INSUFFICIENT_EVIDENCE: <reason>".`;
+Provide a direct, grounded answer with inline citations ([Source X]). Do NOT append a separate citations, sources, or bibliography section at the end. If the sources do not provide sufficient information to answer the question, output "INSUFFICIENT_EVIDENCE: <reason>".`;
 
   return { systemPrompt, userPrompt };
 };

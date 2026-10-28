@@ -113,7 +113,7 @@ export default function Home() {
 
         <main className="flex-1 flex flex-col items-center justify-between overflow-y-auto px-4 py-6 min-h-0">
           {messages.length === 0 ? (
-            <WelcomeScreen onSelectSuggestion={handleSelectSuggestion} />
+            <WelcomeScreen userName={user?.name} onSelectSuggestion={handleSelectSuggestion} />
           ) : (
             <MessageList
               messages={messages}
